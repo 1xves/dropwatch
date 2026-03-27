@@ -224,9 +224,11 @@ async function parseApifyPosts(results: any[], brandName: string) {
 router.post("/instagram", async (req, res) => {
   try {
     const { url } = req.body;
+    console.log("[v0] Scrape request received for URL:", url);
     if (!url) return res.status(400).json({ success: false, error: "URL is required" });
 
     const apifyKey = process.env.APIFY_API_KEY;
+    console.log("[v0] APIFY_API_KEY present:", !!apifyKey, "length:", apifyKey?.length);
     if (!apifyKey) return res.status(500).json({ success: false, error: "Apify API key not configured" });
 
     let formattedUrl = url.trim();
@@ -246,6 +248,7 @@ router.post("/instagram", async (req, res) => {
     const profileUrl = `https://www.instagram.com/${instagramHandle}/`;
     console.log("Scraping Instagram profile via Apify:", profileUrl);
 
+    console.log("[v0] Calling Apify for handle:", instagramHandle);
     const actorRunResponse = await fetch(
       `https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items?token=${apifyKey}`,
       {
@@ -255,12 +258,15 @@ router.post("/instagram", async (req, res) => {
       }
     );
 
+    console.log("[v0] Apify response status:", actorRunResponse.status);
     if (!actorRunResponse.ok) {
       const errText = await actorRunResponse.text();
+      console.log("[v0] Apify error response:", errText.slice(0, 500));
       return res.status(500).json({ success: false, error: `Apify error (${actorRunResponse.status}): ${errText.slice(0, 200)}` });
     }
 
     const apifyResults = await actorRunResponse.json();
+    console.log("[v0] Apify results count:", apifyResults?.length);
     if (!apifyResults || apifyResults.length === 0) return res.status(404).json({ success: false, error: "No data found for this profile" });
 
     const profileData = apifyResults[0];
