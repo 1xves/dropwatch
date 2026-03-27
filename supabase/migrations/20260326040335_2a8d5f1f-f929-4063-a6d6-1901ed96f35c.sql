@@ -1,0 +1,1 @@
+DELETE FROM brands WHERE id = '1bd00a75-1185-40b4-984b-b9fcb3699697';

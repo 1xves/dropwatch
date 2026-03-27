@@ -1,0 +1,1 @@
+ALTER TABLE brands ADD CONSTRAINT brands_instagram_handle_unique UNIQUE (instagram_handle);
