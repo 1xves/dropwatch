@@ -248,25 +248,42 @@ router.post("/instagram", async (req, res) => {
     const profileUrl = `https://www.instagram.com/${instagramHandle}/`;
     console.log("Scraping Instagram profile via Apify:", profileUrl);
 
-    console.log("[v0] Calling Apify for handle:", instagramHandle);
+    console.log("[v0] Calling Apify for handle:", instagramHandle, "profile URL:", profileUrl);
+    
+    // Try using direct URLs first (more reliable)
+    const apifyInput = {
+      usernames: [instagramHandle],
+      resultsLimit: 30
+    };
+    console.log("[v0] Apify input:", JSON.stringify(apifyInput));
+    
     const actorRunResponse = await fetch(
       `https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items?token=${apifyKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usernames: [instagramHandle], resultsLimit: 30 }),
+        body: JSON.stringify(apifyInput),
       }
     );
 
     console.log("[v0] Apify response status:", actorRunResponse.status);
+    const responseText = await actorRunResponse.text();
+    console.log("[v0] Apify raw response (first 1000 chars):", responseText.slice(0, 1000));
+    
     if (!actorRunResponse.ok) {
-      const errText = await actorRunResponse.text();
-      console.log("[v0] Apify error response:", errText.slice(0, 500));
-      return res.status(500).json({ success: false, error: `Apify error (${actorRunResponse.status}): ${errText.slice(0, 200)}` });
+      console.log("[v0] Apify error response:", responseText);
+      return res.status(500).json({ success: false, error: `Apify error (${actorRunResponse.status}): ${responseText.slice(0, 200)}` });
     }
 
-    const apifyResults = await actorRunResponse.json();
-    console.log("[v0] Apify results count:", apifyResults?.length);
+    let apifyResults;
+    try {
+      apifyResults = JSON.parse(responseText);
+    } catch (parseErr) {
+      console.log("[v0] Failed to parse Apify response as JSON:", parseErr);
+      return res.status(500).json({ success: false, error: "Invalid response from Apify - could not parse JSON" });
+    }
+    
+    console.log("[v0] Apify results count:", apifyResults?.length, "First result keys:", apifyResults?.[0] ? Object.keys(apifyResults[0]).slice(0, 10) : "none");
     if (!apifyResults || apifyResults.length === 0) return res.status(404).json({ success: false, error: "No data found for this profile" });
 
     const profileData = apifyResults[0];
